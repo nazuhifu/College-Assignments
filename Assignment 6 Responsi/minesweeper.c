@@ -63,8 +63,7 @@ void cetakPapan (char playerBoard[MAXSISI][MAXSISI]){
 }
 
 // hitung bom di 8 posisi sekeliling posisi yang dipilih
-int hitungBom(int baris, int kolom, int bom[MAXBOM][2], 
-					char realBoard[MAXSISI][MAXSISI]){
+int hitungBom(int baris, int kolom, int bom[MAXBOM][2], char realBoard[MAXSISI][MAXSISI]){
 
 	int jmlBom = 0;
 
@@ -73,14 +72,14 @@ int hitungBom(int baris, int kolom, int bom[MAXBOM][2],
 			   N.W N N.E
 			    \ | /
 			W----POS----E
-				/ | \
+		            / | \
 			  S.W S S.E
 
 		Pos --> Posisi sekarang (baris, kolom)
-		N --> North	 (baris-1, kolom)
-		S --> South	 (baris+1, kolom)
-		E --> East		 (baris, kolom+1)
-		W --> West		 (baris, kolom-1)
+		N --> North	  (baris-1, kolom)
+		S --> South	  (baris+1, kolom)
+		E --> East	  (baris, kolom+1)
+		W --> West	  (baris, kolom-1)
 		N.E--> North-East (baris-1, kolom+1)
 		N.W--> North-West (baris-1, kolom-1)
 		S.E--> South-East (baris+1, kolom+1)
@@ -146,8 +145,7 @@ int hitungBom(int baris, int kolom, int bom[MAXBOM][2],
 	return jmlBom;
 }
 
-bool Minesweeper (char playerBoard[MAXSISI][MAXSISI], char realBoard[MAXSISI][MAXSISI],
-			int bom[][2], int baris, int kolom, int *movesLeft){
+bool Minesweeper (char playerBoard[MAXSISI][MAXSISI], char realBoard[MAXSISI][MAXSISI], int bom[][2], int baris, int kolom, int *movesLeft){
 
 	// base case ketika posisi sudah terisi bukan bom
     // kembalikan gameOver bernilai false
@@ -177,6 +175,25 @@ bool Minesweeper (char playerBoard[MAXSISI][MAXSISI], char realBoard[MAXSISI][MA
         // jika di sekitar posisi yang dipilih tidak ada bom
         // maka hitung bom di semua posisi sekitarnya
 		if (!count){
+
+	/*
+
+			   N.W N N.E
+			    \ | /
+			W----POS----E
+		            / | \
+			  S.W S S.E
+
+		Pos --> Posisi sekarang (baris, kolom)
+		N --> North	  (baris-1, kolom)
+		S --> South	  (baris+1, kolom)
+		E --> East	  (baris, kolom+1)
+		W --> West	  (baris, kolom-1)
+		N.E--> North-East (baris-1, kolom+1)
+		N.W--> North-West (baris-1, kolom-1)
+		S.E--> South-East (baris+1, kolom+1)
+		S.W--> South-West (baris+1, kolom-1)
+	*/
 
 			//----------- 1. North ------------
 
