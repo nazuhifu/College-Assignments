@@ -338,8 +338,6 @@ void mainGame (){
 	// mengisi posisi bom dengan acak
 	placeBom (bom, realBoard);
 
-    cetakPapan (realBoard);
-
 	int movePertama = 0;
 
     // selama belum gameOver
