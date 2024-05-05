@@ -8,14 +8,20 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <limits>
 
 int playerHealth = 100;
 
 void pressAny()
 {
     std::cout << "\nPress any key to continue... ";
-    getchar();              // Wait for a key press
-    printf("\033[H\033[J"); // Clear the console screen
+    getchar(); // Wait for a key press
+
+#ifdef _WIN32
+    system("cls"); // For Windows
+#else
+    system("clear"); // For Unix-based systems (Linux, macOS)
+#endif
 }
 
 // Struct untuk menyimpan item
@@ -55,12 +61,13 @@ struct JobNode
 
 struct Player
 {
-    int level = 2;
+    int level = 5;
     int experience = 0;
     int maxExperience = 100; // XP required to level up
     JobNode *jobNode = nullptr;
     bool hasMeleeJob = false;
     bool hasRangeJob = false;
+    bool hasAdvancedJob = false;
     int meleeJobLevel = 2; // Level required
     int rangeJobLevel = 2;
     int advancedJobLevel = 3;
@@ -140,35 +147,53 @@ void chooseMeleeOrRangeJob()
     }
 }
 
-void chooseAdvancedJob(JobNode *parentNode)
+void chooseAdvancedJob(bool isMeleeJob)
 {
-    std::cout << "You have reached level " << player.advancedJobLevel << ".\nChoose your advanced job:\n";
-    std::cout << "1. " << parentNode->left->jobName << "\n";
-    std::cout << "2. " << parentNode->right->jobName << "\n";
-    std::cout << "Enter your choice: ";
-    int choice;
-    std::cin >> choice;
-
-    if (choice == 1)
+    JobNode *parentNode = nullptr;
+    if (isMeleeJob)
     {
-        selectJob(parentNode->left);
-    }
-    else if (choice == 2)
-    {
-        selectJob(parentNode->right);
+        parentNode = jobTree->left;
     }
     else
     {
-        std::cout << "Invalid choice. You can choose your advanced job later.\n";
+        parentNode = jobTree->right;
+    }
+
+    if (parentNode != nullptr)
+    {
+        std::cout << "You have reached minimum level " << player.advancedJobLevel << " requirement.\nChoose your advanced job:\n";
+        std::cout << "1. " << parentNode->left->jobName << "\n";
+        std::cout << "2. " << parentNode->right->jobName << "\n";
+        std::cout << "Enter your choice: ";
+        int choice;
+        std::cin >> choice;
+
+        if (choice == 1)
+        {
+            selectJob(parentNode->left);
+            player.hasAdvancedJob = true;
+        }
+        else if (choice == 2)
+        {
+            selectJob(parentNode->right);
+            player.hasAdvancedJob = true;
+        }
+        else
+        {
+            std::cout << "Invalid choice. You can choose your advanced job later.\n";
+        }
+    }
+    else
+    {
+        std::cout << "Invalid job category.\n";
     }
 }
 
 void chooseJob()
 {
-    if (player.level < player.meleeJobLevel)
+    if (player.level < player.meleeJobLevel && !player.hasMeleeJob && !player.hasRangeJob)
     {
         std::cout << "\nYou need to reach level " << player.meleeJobLevel << " to choose a job category.\n";
-
         pressAny();
         return;
     }
@@ -177,18 +202,25 @@ void chooseJob()
     {
         chooseMeleeOrRangeJob();
     }
-    else if (player.level >= player.advancedJobLevel && player.jobNode != nullptr)
+    else if (player.level >= player.advancedJobLevel && player.jobNode != nullptr && (player.jobNode->left != nullptr || player.jobNode->right != nullptr))
     {
-        chooseAdvancedJob(player.jobNode->left->left ? player.jobNode->left : player.jobNode->right);
+        if (player.hasMeleeJob)
+        {
+            chooseAdvancedJob(true);
+        }
+        else
+        {
+            chooseAdvancedJob(false);
+        }
     }
     else
     {
         job();
         std::cout << "You have already chosen your job: " << player.jobNode->jobName << "\n";
 
-        if (player.hasMeleeJob || player.hasRangeJob)
+        if ((player.hasMeleeJob || player.hasRangeJob) && !player.hasAdvancedJob)
         {
-            std::cout << "You need to reach level 3 to obtain the next job.\n";
+            std::cout << "You need to reach level " << player.advancedJobLevel << " to obtain the next job.\n";
         }
         pressAny();
     }
@@ -293,6 +325,7 @@ void createWorldMap()
     locDesc["Savanna"] = "Serenwood Savanna yang belum terjamah. Di sini, ritme kehidupan berdetak selaras dengan daratan, saat kawanan makhluk agung berkeliaran dengan bebas di bawah langit yang luas.";
     locDesc["Desert"] = "Sunscar Desert, negeri dengan bukit pasir tak berujung dan panas yang berkilauan. Tebing batu pasir yang menjulang tinggi menjulang bagaikan penjaga kuno, menimbulkan bayangan panjang di atas dasar gurun.";
     locDesc["Swamp"] = "Mistwood Swamp yang penuh teka-teki. Di sini, daratan diselimuti kabut abadi, mengaburkan jalan di depan dan menyembunyikan rahasia kuno dan jahat. Saluran air yang berkelok-kelok membelah daerah berawa, perairannya yang gelap penuh dengan makhluk tak kasat mata dan legenda yang dibisikkan.";
+    locDesc["Plain"] = "Misty Plain terbentang tanpa henti di hadapan mata, hamparan padang rumput luas yang membentang sejauh mata memandang. Medannya bergelombang lembut, dengan sesekali bunga-bunga liar memecah monotonnya rerumputan. Langit terbentang di atas kepala, luas dan tak terputus, hanya sesekali gumpalan awan menghalangi perluasannya.";
 }
 
 void printLocationDescription(const std::string &loc)
@@ -366,8 +399,8 @@ void useItem(int index)
         return;
     }
 
-    auto it = playerInventory.begin();
-    std::advance(it, index - 1);
+    // access the element in the list at the specified index
+    auto it = std::next(playerInventory.begin(), index - 1);
 
     if (it->quantity > 0)
     {
@@ -388,7 +421,6 @@ void useItem(int index)
     {
         std::cout << "You don't have any " << it->name << " left.\n";
     }
-    pressAny();
 }
 
 void showInventory()
@@ -410,13 +442,12 @@ void showInventory()
     if (playerHealth >= 100 && input != "x")
     {
         std::cout << "Your health points is full\n";
-        printf("\033[H\033[J");
         return;
     }
 
     if (input == "x")
     {
-        printf("\033[H\033[J");
+        system("cls");
         return;
     }
     else
@@ -466,8 +497,7 @@ void playerTurn(Enemy &enemy)
 
     int choice;
     std::cin >> choice;
-
-    printf("\033[H\033[J");
+    getchar();
 
     switch (choice)
     {
@@ -585,7 +615,7 @@ int main()
 
         int choice;
         std::cin >> choice;
-        getchar();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear input buffer
         system("cls");
 
         switch (choice)
@@ -603,7 +633,7 @@ int main()
             std::cout << "Enter the destination: ";
             std::string destination;
             std::cin >> destination;
-            getchar();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear input buffer
 
             travelTo(currentLocation, destination);
             break;
@@ -622,7 +652,6 @@ int main()
             return 0;
         default:
             std::cout << "Invalid choice. Try again.\n";
-            getchar();
             break;
         }
     }
