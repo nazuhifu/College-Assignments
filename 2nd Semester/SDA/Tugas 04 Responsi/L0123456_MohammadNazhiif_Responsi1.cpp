@@ -27,12 +27,14 @@ struct Enemy
     int power;
 };
 
+// Struct for a tree node with a parent pointer
 struct Node
 {
     std::string location;
-    std::vector<Node *> neighbor;
+    Node *parent; // Add a parent pointer
+    std::vector<Node *> children;
 
-    Node(const std::string &loc) : location(loc) {} // Constructor
+    Node(const std::string &loc, Node *par = nullptr) : location(loc), parent(par) {}
 };
 
 std::list<Item> playerInventory;
@@ -53,11 +55,11 @@ void route()
     std::cout << R"(
                 Town
                  /\
-           Forest  Castle ---------
-            /\                 /   \
-        Cave  Mountain --- Village  Savanna
-         /\
-   Desert  Swamp
+           Forest  Castle ------
+            /\                / \
+        Cave  Mountain  Village  Savanna
+         /\         \
+   Desert  Swamp    Plain
     )" << std::endl;
 }
 
@@ -102,44 +104,35 @@ void travelProgress(Node *&currentLocation)
 }
 
 // Menyimpan peta dunia
-Node *worldMap;
+Node *locationTree;
 
 void createWorldMap()
 {
-    worldMap = new Node("Town");
-    Node *castle = new Node("Castle");
-    Node *forest = new Node("Forest");
-    Node *cave = new Node("Cave");
-    Node *mountain = new Node("Mountain");
-    Node *village = new Node("Village");
-    Node *savanna = new Node("Savanna");
-    Node *desert = new Node("Desert");
-    Node *swamp = new Node("Swamp");
+    locationTree = new Node("Town");
 
-    worldMap->neighbor.push_back(forest);
-    worldMap->neighbor.push_back(castle);
+    Node *castle = new Node("Castle", locationTree);
+    Node *forest = new Node("Forest", locationTree);
+    Node *cave = new Node("Cave", forest);
+    Node *mountain = new Node("Mountain", forest);
+    Node *village = new Node("Village", castle);
+    Node *savanna = new Node("Savanna", castle);
+    Node *desert = new Node("Desert", cave);
+    Node *swamp = new Node("Swamp", cave);
+    Node *plain = new Node("Plain", mountain);
 
-    castle->neighbor.push_back(worldMap);
-    castle->neighbor.push_back(village);
-    castle->neighbor.push_back(savanna);
+    locationTree->children.push_back(forest);
+    locationTree->children.push_back(castle);
 
-    forest->neighbor.push_back(worldMap);
-    forest->neighbor.push_back(cave);
-    forest->neighbor.push_back(mountain);
+    castle->children.push_back(village);
+    castle->children.push_back(savanna);
 
-    cave->neighbor.push_back(forest);
-    cave->neighbor.push_back(desert);
-    cave->neighbor.push_back(swamp);
+    forest->children.push_back(cave);
+    forest->children.push_back(mountain);
 
-    mountain->neighbor.push_back(forest);
-    mountain->neighbor.push_back(village);
+    cave->children.push_back(desert);
+    cave->children.push_back(swamp);
 
-    village->neighbor.push_back(mountain);
-    village->neighbor.push_back(castle);
-
-    savanna->neighbor.push_back(castle);
-    desert->neighbor.push_back(cave);
-    swamp->neighbor.push_back(cave);
+    mountain->children.push_back(plain);
 
     locDesc["Town"] = "Evervale Town, pusat perdagangan dan komunitas yang ramai, tumbuh subur di tengah perbukitan yang tenang dan padang rumput yang hijau. Kota ini mengundang para petualang untuk mengungkap misteri yang tersembunyi di balik kisah masa lalunya.";
     locDesc["Forest"] = "Whispering Forest, hamparan dedaunan zamrud yang misterius, mengundang gumaman pelan roh-roh kuno yang menari di antara sinar matahari yang menembus kanopi.";
@@ -162,30 +155,49 @@ void travelTo(Node *&currentLocation, const std::string &newLocation)
 {
     if (currentLocation->location == newLocation)
     {
-        std::cout << "You are already in " << newLocation << "!\n\n";
+        std::cout << "\nYou are already in " << newLocation << "!\n\n";
         pressAny();
         return;
     }
 
     bool found = false;
 
-    for (Node *neighbor : currentLocation->neighbor)
+    // First, check if the newLocation is a child of the currentLocation
+    for (Node *children : currentLocation->children)
     {
-        if (neighbor->location == newLocation)
+        if (children->location == newLocation)
         {
-            std::cout << "--- Traveling from " << currentLocation->location << " to " << newLocation << ". ---" << std::endl;
+            std::cout << "\n--- Traveling from " << currentLocation->location << " to " << newLocation << ". ---" << std::endl;
 
             printLocationDescription(newLocation);
 
             travelHistory.push(currentLocation->location);
             visitedLoc.insert(currentLocation->location);
 
-            currentLocation = neighbor;
+            currentLocation = children;
             found = true;
 
             pressAny();
             return;
         }
+    }
+
+    // If not found, check if the newLocation is a parent of the currentLocation
+    Node *temp = currentLocation->parent;
+    if (temp->location == newLocation)
+    {
+        std::cout << "\n--- Traveling from " << currentLocation->location << " to " << newLocation << ". ---" << std::endl;
+
+        printLocationDescription(newLocation);
+
+        travelHistory.push(currentLocation->location);
+        visitedLoc.insert(currentLocation->location);
+
+        currentLocation = temp;
+        found = true;
+
+        pressAny();
+        return;
     }
 
     if (!found)
@@ -380,7 +392,7 @@ void fightEnemy(Node *currentLocation)
 int main()
 {
     createWorldMap();
-    Node *currentLocation = worldMap;
+    Node *currentLocation = locationTree;
 
     // Menginisialisasi beberapa item dan musuh
     playerInventory.push_back({"Low Potion", 5, 100});
