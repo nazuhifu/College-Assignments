@@ -37,6 +37,15 @@ struct Node
     Node(const std::string &loc, Node *par = nullptr) : location(loc), parent(par) {}
 };
 
+struct Player
+{
+    int level = 1;
+    int experience = 0;
+    int maxExperience = 100; // XP required to level up
+};
+
+Player player;
+
 std::list<Item> playerInventory;
 std::stack<std::string> travelHistory;
 std::queue<Enemy> enemyQueue;
@@ -243,6 +252,8 @@ void useItem(int index)
 
 void showInventory()
 {
+    std::cout << "Player Level: " << player.level << ", XP: " << player.experience << "/" << player.maxExperience << ".\n\n";
+
     std::cout << "Player Inventory:\n";
     int index = 1;
     for (const auto &item : playerInventory)
@@ -283,8 +294,24 @@ void playerAttack(Enemy &enemy)
     {
         enemy.health = 0;
     }
-    std::cout << "You dealt 20 damage "
+    std::cout << "\nYou dealt 20 damage "
               << "(Enemy health: " << enemy.health << ")\n";
+
+    if (enemy.health == 0)
+    {
+        int xpGained = rand() % 51 + 25;
+        player.experience += xpGained;
+        std::cout << "\nYou gained " << xpGained << " exp!\n";
+    }
+
+    // Check if the player has enough XP to level up
+    while (player.experience >= player.maxExperience)
+    {
+        player.experience -= player.maxExperience;
+        player.level++;
+        player.maxExperience == static_cast<int>(player.maxExperience * 1.2);
+        std::cout << "You leveled up to level " << player.level << "!\n\n";
+    }
 }
 
 void playerTurn(Enemy &enemy)
@@ -296,7 +323,6 @@ void playerTurn(Enemy &enemy)
 
     int choice;
     std::cin >> choice;
-    getchar();
 
     switch (choice)
     {
@@ -361,7 +387,7 @@ void fightEnemy(Node *currentLocation)
         Enemy currentEnemy = enemyQueue.front();
         enemyQueue.pop();
 
-        std::cout << "\nYou are fighting " << currentEnemy.name << " (Health: " << currentEnemy.health << ")"
+        std::cout << "\n== You are fighting " << currentEnemy.name << " (Health: " << currentEnemy.health << ") =="
                   << " (Power " << currentEnemy.power << ")\n\n";
 
         while (currentEnemy.health > 0 && playerHealth > 0)
@@ -373,7 +399,7 @@ void fightEnemy(Node *currentLocation)
             if (currentEnemy.health <= 0)
             {
                 std::cout << "You defeated " << currentEnemy.name << "!\n";
-                std::cout << "\n--- Player Health: " << playerHealth << " ---\n";
+                std::cout << "Player Health: " << playerHealth << " ---\n";
             }
 
             // Enemy turn's
@@ -385,7 +411,7 @@ void fightEnemy(Node *currentLocation)
         }
     }
     if (enemyQueue.empty())
-        std::cout << "There are no enemies to fight.\n";
+        std::cout << "\nThere are no more enemies to fight.\n";
     pressAny();
 }
 
@@ -393,6 +419,7 @@ int main()
 {
     createWorldMap();
     Node *currentLocation = locationTree;
+    player = Player();
 
     // Menginisialisasi beberapa item dan musuh
     playerInventory.push_back({"Low Potion", 5, 100});
@@ -403,7 +430,7 @@ int main()
     while (true)
     {
         std::cout << "\nWhat would you like to do?\n";
-        std::cout << "1. Show Inventory\n";
+        std::cout << "1. Show Level and Inventory\n";
         std::cout << "2. Fight Enemy\n";
         std::cout << "3. Travel\n";
         std::cout << "4. Travel History\n";
