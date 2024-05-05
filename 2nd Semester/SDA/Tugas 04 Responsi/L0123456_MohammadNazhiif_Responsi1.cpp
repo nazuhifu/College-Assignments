@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdio>
 #include <stdlib.h>
+#include <time.h>
 #include <list>
 #include <stack>
 #include <queue>
@@ -15,6 +16,7 @@ struct Item
 {
     std::string name;
     int value;
+    int quantity;
 };
 
 // Struct untuk menyimpan data musuh
@@ -180,6 +182,7 @@ void travelTo(Node *&currentLocation, const std::string &newLocation)
 
             currentLocation = neighbor;
             found = true;
+
             pressAny();
             return;
         }
@@ -192,13 +195,72 @@ void travelTo(Node *&currentLocation, const std::string &newLocation)
     }
 }
 
+void useItem(int index)
+{
+    if (index < 1 || index > playerInventory.size())
+    {
+        std::cout << "Invalid item index.\n";
+        pressAny();
+        return;
+    }
+
+    auto it = playerInventory.begin();
+    std::advance(it, index - 1);
+
+    if (it->quantity > 0)
+    {
+        int healAmount = it->value;
+        playerHealth += healAmount;
+
+        // Cap the playerHealth to 100
+        if (playerHealth >= 100)
+            playerHealth = 100;
+
+        std::cout << "You used a " << it->name << " and restored " << healAmount << " health points.\n";
+        std::cout << "Your current health: " << playerHealth << "\n";
+
+        // Reduce the item quantity
+        it->quantity--;
+    }
+    else
+    {
+        std::cout << "You don't have any " << it->name << " left.\n";
+    }
+    pressAny();
+}
+
 void showInventory()
 {
     std::cout << "Player Inventory:\n";
+    int index = 1;
     for (const auto &item : playerInventory)
     {
-        std::cout << "- " << item.name << " (Value: " << item.value << ")\n";
+        std::cout << index << ". " << item.name << " (+" << item.value << " health) (Remaining: " << item.quantity << ")\n";
+        index++;
     }
+    std::cout << "\nEnter the item index to use, or 'x' to exit: ";
+
+    std::string input;
+    std::getline(std::cin, input);
+
+    if (playerHealth >= 100 && input != "x")
+    {
+        std::cout << "Your health points is full\n";
+        pressAny();
+        return;
+    }
+
+    if (input == "x")
+    {
+        pressAny();
+        return;
+    }
+    else
+    {
+        int itemIndex = std::stoi(input);
+        useItem(itemIndex);
+    }
+
     pressAny();
 }
 
@@ -213,19 +275,76 @@ void playerAttack(Enemy &enemy)
               << "(Enemy health: " << enemy.health << ")\n";
 }
 
+void playerTurn(Enemy &enemy)
+{
+    std::cout << "Player's turn:\n";
+    std::cout << "1. Attack\n";
+    std::cout << "2. Use Item\n";
+    std::cout << "Enter your choice: ";
+
+    int choice;
+    std::cin >> choice;
+    getchar();
+
+    switch (choice)
+    {
+    case 1:
+        playerAttack(enemy);
+        break;
+    case 2:
+        showInventory();
+        break;
+    default:
+        std::cout << "Invalid choice\n";
+        break;
+    }
+}
+
 void playerDefend(Enemy &enemy)
 {
     if (enemy.health > 0)
     {
         playerHealth -= enemy.power;
         std::cout << enemy.name << " dealt " << enemy.power << " damage "
-                  << "(Player health: " << playerHealth << ")\n";
+                  << "(Player health: " << playerHealth << ")\n\n";
     }
 }
 
-void fightEnemy()
+void generateEnemies(Node *currentLocation)
 {
-    if (!enemyQueue.empty())
+    enemyQueue = std::queue<Enemy>(); // Clear the existing enemyQueue
+
+    srand(time(nullptr));
+
+    // Generate random enemies
+    int numEnemies = rand() % 4 + 1;
+    for (int i = 0; i < numEnemies; i++)
+    {
+        std::string location = currentLocation->location;
+        int health, power;
+        if (location == "Forest" || location == "Cave" || location == "Swamp" || location == "Desert")
+        {
+            // Harder enemies
+            health = rand() % 31 + 20; // Random health between 20 and 50
+            power = rand() % 11 + 10;  // Random power between 10 and 20
+        }
+        else
+        {
+            // Easier enemies
+            health = rand() % 11 + 10; // between 10 and 20
+            power = rand() % 6 + 5;    // between 5 and 10
+        }
+
+        std::string enemyName = "Enemy " + std::to_string(i + 1);
+        enemyQueue.push({enemyName, health, power});
+    }
+}
+
+void fightEnemy(Node *currentLocation)
+{
+    generateEnemies(currentLocation);
+
+    while (!enemyQueue.empty())
     {
         Enemy currentEnemy = enemyQueue.front();
         enemyQueue.pop();
@@ -233,10 +352,10 @@ void fightEnemy()
         std::cout << "\nYou are fighting " << currentEnemy.name << " (Health: " << currentEnemy.health << ")"
                   << " (Power " << currentEnemy.power << ")\n\n";
 
-        while (currentEnemy.health > 0)
+        while (currentEnemy.health > 0 && playerHealth > 0)
         {
             // Player turn's
-            playerAttack(currentEnemy);
+            playerTurn(currentEnemy);
 
             // Enemy defeated
             if (currentEnemy.health <= 0)
@@ -253,10 +372,8 @@ void fightEnemy()
             }
         }
     }
-    else
-    {
+    if (enemyQueue.empty())
         std::cout << "There are no enemies to fight.\n";
-    }
     pressAny();
 }
 
@@ -266,19 +383,14 @@ int main()
     Node *currentLocation = worldMap;
 
     // Menginisialisasi beberapa item dan musuh
-    playerInventory.push_back({"Low Potion", 5});
-    playerInventory.push_back({"Medium Potion", 10});
-    playerInventory.push_back({"High Potion", 15});
-    playerInventory.push_back({"Meat", 5});
-
-    enemyQueue.push({"Goblin", 30, 5});
-    enemyQueue.push({"Orc", 50, 10});
-    enemyQueue.push({"Werewolf", 50, 15});
-    enemyQueue.push({"Ogre", 55, 15});
+    playerInventory.push_back({"Low Potion", 5, 100});
+    playerInventory.push_back({"Medium Potion", 10, 100});
+    playerInventory.push_back({"High Potion", 15, 100});
+    playerInventory.push_back({"Meat", 5, 999});
 
     while (true)
     {
-        std::cout << "What would you like to do?\n";
+        std::cout << "\nWhat would you like to do?\n";
         std::cout << "1. Show Inventory\n";
         std::cout << "2. Fight Enemy\n";
         std::cout << "3. Travel\n";
@@ -298,7 +410,7 @@ int main()
             showInventory();
             break;
         case 2:
-            fightEnemy();
+            fightEnemy(currentLocation);
             break;
         case 3:
         {
