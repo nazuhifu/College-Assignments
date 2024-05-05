@@ -11,6 +11,13 @@
 
 int playerHealth = 100;
 
+void pressAny()
+{
+    std::cout << "\nPress any key to continue... ";
+    getchar();              // Wait for a key press
+    printf("\033[H\033[J"); // Clear the console screen
+}
+
 // Struct untuk menyimpan item
 struct Item
 {
@@ -37,27 +44,161 @@ struct Node
     Node(const std::string &loc, Node *par = nullptr) : location(loc), parent(par) {}
 };
 
-struct Player
+struct JobNode
 {
-    int level = 1;
-    int experience = 0;
-    int maxExperience = 100; // XP required to level up
+    std::string jobName;
+    JobNode *left;
+    JobNode *right;
+
+    JobNode(const std::string &name) : jobName(name), left(nullptr), right(nullptr) {}
 };
 
+struct Player
+{
+    int level = 2;
+    int experience = 0;
+    int maxExperience = 100; // XP required to level up
+    JobNode *jobNode = nullptr;
+    bool hasMeleeJob = false;
+    bool hasRangeJob = false;
+    int meleeJobLevel = 2; // Level required
+    int rangeJobLevel = 2;
+    int advancedJobLevel = 3;
+};
+
+void job()
+{
+    std::cout << R"(
+               Player
+                 /\
+                /  \
+           Melee   Range
+          /\           /\
+    Knight Paladin  Mage Archer
+    )" << std::endl;
+}
+
 Player player;
+
+JobNode *createJobTree()
+{
+    JobNode *player = new JobNode("Player");
+
+    JobNode *melee = new JobNode("Melee");
+    JobNode *range = new JobNode("Range");
+
+    JobNode *darkKnight = new JobNode("Dark Knight");
+    JobNode *paladin = new JobNode("Paladin");
+    JobNode *archer = new JobNode("Archer");
+    JobNode *mage = new JobNode("Mage");
+
+    player->left = melee;
+    player->right = range;
+
+    melee->left = darkKnight;
+    melee->right = paladin;
+
+    range->left = archer;
+    range->right = mage;
+
+    return player;
+}
+
+JobNode *jobTree = createJobTree();
+
+void selectJob(JobNode *jobNode)
+{
+    player.jobNode = jobNode;
+    std::cout << "You have selected the " << player.jobNode->jobName << " class job\n";
+}
+
+void chooseMeleeOrRangeJob()
+{
+    job();
+
+    std::cout << "You have reached level " << player.meleeJobLevel << std::endl;
+    std::cout << "Choose you job category: \n";
+    std::cout << "1. Melee\n";
+    std::cout << "2. Range\n";
+    std::cout << "Enter you choice: ";
+    int choice;
+    std::cin >> choice;
+
+    if (choice == 1)
+    {
+        player.hasMeleeJob = true;
+        selectJob(jobTree->left);
+    }
+    else if (choice == 2)
+    {
+        player.hasRangeJob = true;
+        selectJob(jobTree->right);
+    }
+    else
+    {
+        std::cout << "Invalid choice\n";
+    }
+}
+
+void chooseAdvancedJob(JobNode *parentNode)
+{
+    std::cout << "You have reached level " << player.advancedJobLevel << ".\nChoose your advanced job:\n";
+    std::cout << "1. " << parentNode->left->jobName << "\n";
+    std::cout << "2. " << parentNode->right->jobName << "\n";
+    std::cout << "Enter your choice: ";
+    int choice;
+    std::cin >> choice;
+
+    if (choice == 1)
+    {
+        selectJob(parentNode->left);
+    }
+    else if (choice == 2)
+    {
+        selectJob(parentNode->right);
+    }
+    else
+    {
+        std::cout << "Invalid choice. You can choose your advanced job later.\n";
+    }
+}
+
+void chooseJob()
+{
+    if (player.level < player.meleeJobLevel)
+    {
+        std::cout << "\nYou need to reach level " << player.meleeJobLevel << " to choose a job category.\n";
+
+        pressAny();
+        return;
+    }
+
+    if (!player.hasMeleeJob && !player.hasRangeJob)
+    {
+        chooseMeleeOrRangeJob();
+    }
+    else if (player.level >= player.advancedJobLevel && player.jobNode != nullptr)
+    {
+        chooseAdvancedJob(player.jobNode->left->left ? player.jobNode->left : player.jobNode->right);
+    }
+    else
+    {
+        job();
+        std::cout << "You have already chosen your job: " << player.jobNode->jobName << "\n";
+
+        if (player.hasMeleeJob || player.hasRangeJob)
+        {
+            std::cout << "You need to reach level 3 to obtain the next job.\n";
+        }
+        pressAny();
+    }
+}
 
 std::list<Item> playerInventory;
 std::stack<std::string> travelHistory;
 std::queue<Enemy> enemyQueue;
 std::set<std::string> visitedLoc;
 std::unordered_map<std::string, std::string> locDesc;
-
-void pressAny()
-{
-    std::cout << "\nPress any key to continue... ";
-    getchar(); // Wait for a key press
-    system("cls");
-}
 
 void route()
 {
@@ -75,7 +216,7 @@ void route()
 void history(Node *&currentLocation)
 {
     std::cout << "Current Location: " << currentLocation->location << std::endl;
-    std::cout << "Travel History: ";
+    std::cout << "Previous Town: ";
 
     // Create a copy of the travelHistory stack
     std::stack<std::string> historyStack = travelHistory;
@@ -269,13 +410,13 @@ void showInventory()
     if (playerHealth >= 100 && input != "x")
     {
         std::cout << "Your health points is full\n";
-        pressAny();
+        printf("\033[H\033[J");
         return;
     }
 
     if (input == "x")
     {
-        pressAny();
+        printf("\033[H\033[J");
         return;
     }
     else
@@ -289,6 +430,8 @@ void showInventory()
 
 void playerAttack(Enemy &enemy)
 {
+    srand(time(nullptr));
+
     enemy.health -= 20;
     if (enemy.health < 0)
     {
@@ -299,7 +442,7 @@ void playerAttack(Enemy &enemy)
 
     if (enemy.health == 0)
     {
-        int xpGained = rand() % 51 + 25;
+        int xpGained = rand() % 51 + 25; // between 25 and 75
         player.experience += xpGained;
         std::cout << "\nYou gained " << xpGained << " exp!\n";
     }
@@ -309,7 +452,7 @@ void playerAttack(Enemy &enemy)
     {
         player.experience -= player.maxExperience;
         player.level++;
-        player.maxExperience == static_cast<int>(player.maxExperience * 1.2);
+        player.maxExperience = static_cast<int>(player.maxExperience * 1.2);
         std::cout << "You leveled up to level " << player.level << "!\n\n";
     }
 }
@@ -323,6 +466,8 @@ void playerTurn(Enemy &enemy)
 
     int choice;
     std::cin >> choice;
+
+    printf("\033[H\033[J");
 
     switch (choice)
     {
@@ -387,8 +532,8 @@ void fightEnemy(Node *currentLocation)
         Enemy currentEnemy = enemyQueue.front();
         enemyQueue.pop();
 
-        std::cout << "\n== You are fighting " << currentEnemy.name << " (Health: " << currentEnemy.health << ") =="
-                  << " (Power " << currentEnemy.power << ")\n\n";
+        std::cout << "\n=== You are fighting " << currentEnemy.name << " (Health: " << currentEnemy.health << ")"
+                  << " (Power " << currentEnemy.power << ") ===\n\n";
 
         while (currentEnemy.health > 0 && playerHealth > 0)
         {
@@ -399,7 +544,7 @@ void fightEnemy(Node *currentLocation)
             if (currentEnemy.health <= 0)
             {
                 std::cout << "You defeated " << currentEnemy.name << "!\n";
-                std::cout << "Player Health: " << playerHealth << " ---\n";
+                std::cout << "Player Health: " << playerHealth << "\n";
             }
 
             // Enemy turn's
@@ -419,7 +564,6 @@ int main()
 {
     createWorldMap();
     Node *currentLocation = locationTree;
-    player = Player();
 
     // Menginisialisasi beberapa item dan musuh
     playerInventory.push_back({"Low Potion", 5, 100});
@@ -435,7 +579,8 @@ int main()
         std::cout << "3. Travel\n";
         std::cout << "4. Travel History\n";
         std::cout << "5. Travel Progress\n";
-        std::cout << "6. Quit\n";
+        std::cout << "6. Choose Job Class\n";
+        std::cout << "7. Quit\n";
         std::cout << "Enter your choice: ";
 
         int choice;
@@ -470,6 +615,9 @@ int main()
             travelProgress(currentLocation);
             break;
         case 6:
+            chooseJob();
+            break;
+        case 7:
             std::cout << "Goodbye!\n";
             return 0;
         default:
