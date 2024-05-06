@@ -61,9 +61,12 @@ struct JobNode
 
 struct Player
 {
-    int level = 5;
+    int level = 1;
     int experience = 0;
     int maxExperience = 100; // XP required to level up
+    int attackPower = 10;    // Default attack power
+    int defense = 5;         // Default defense
+
     JobNode *jobNode = nullptr;
     bool hasMeleeJob = false;
     bool hasRangeJob = false;
@@ -81,7 +84,7 @@ void job()
                 /  \
            Melee   Range
           /\           /\
-    Knight Paladin  Mage Archer
+Dark Knight Paladin  Mage Archer
     )" << std::endl;
 }
 
@@ -105,8 +108,8 @@ JobNode *createJobTree()
     melee->left = darkKnight;
     melee->right = paladin;
 
-    range->left = archer;
-    range->right = mage;
+    range->left = mage;
+    range->right = archer;
 
     return player;
 }
@@ -117,6 +120,32 @@ void selectJob(JobNode *jobNode)
 {
     player.jobNode = jobNode;
     std::cout << "You have selected the " << player.jobNode->jobName << " class job\n";
+
+    // Update attack power and defense based on the job class
+    if (player.jobNode->jobName == "Dark Knight")
+    {
+        player.attackPower = 15;
+        player.defense = 8;
+        std::cout << "As a Dark Knight, you have high attack power (" << player.attackPower << ") and moderate defense (" << player.defense << ").\n";
+    }
+    else if (player.jobNode->jobName == "Paladin")
+    {
+        player.attackPower = 12;
+        player.defense = 10;
+        std::cout << "As a Paladin, you have moderate attack power (" << player.attackPower << ") and high defense (" << player.defense << ").\n";
+    }
+    else if (player.jobNode->jobName == "Archer")
+    {
+        player.attackPower = 18;
+        player.defense = 4;
+        std::cout << "As an Archer, you have very high attack power (" << player.attackPower << ") but lower defense (" << player.defense << ").\n";
+    }
+    else if (player.jobNode->jobName == "Mage")
+    {
+        player.attackPower = 14;
+        player.defense = 6;
+        std::cout << "As a Mage, you have high attack power (" << player.attackPower << ") and moderate defense (" << player.defense << ").\n";
+    }
 }
 
 void chooseMeleeOrRangeJob()
@@ -217,6 +246,24 @@ void chooseJob()
     {
         job();
         std::cout << "You have already chosen your job: " << player.jobNode->jobName << "\n";
+
+        // Display job abilities
+        if (player.jobNode->jobName == "Dark Knight")
+        {
+            std::cout << "As a Dark Knight, you have high attack power (" << player.attackPower << ") and moderate defense (" << player.defense << ").\n";
+        }
+        else if (player.jobNode->jobName == "Paladin")
+        {
+            std::cout << "As a Paladin, you have moderate attack power (" << player.attackPower << ") and high defense (" << player.defense << ").\n";
+        }
+        else if (player.jobNode->jobName == "Archer")
+        {
+            std::cout << "As an Archer, you have very high attack power (" << player.attackPower << ") but lower defense (" << player.defense << ").\n";
+        }
+        else if (player.jobNode->jobName == "Mage")
+        {
+            std::cout << "As a Mage, you have high attack power (" << player.attackPower << ") and moderate defense (" << player.defense << ").\n";
+        }
 
         if ((player.hasMeleeJob || player.hasRangeJob) && !player.hasAdvancedJob)
         {
@@ -463,13 +510,12 @@ void playerAttack(Enemy &enemy)
 {
     srand(time(nullptr));
 
-    enemy.health -= 20;
+    enemy.health -= player.attackPower;
     if (enemy.health < 0)
     {
         enemy.health = 0;
     }
-    std::cout << "\nYou dealt 20 damage "
-              << "(Enemy health: " << enemy.health << ")\n";
+    std::cout << "\nYou dealt " << player.attackPower << " damage (Enemy health: " << enemy.health << ")\n";
 
     if (enemy.health == 0)
     {
@@ -517,8 +563,11 @@ void playerDefend(Enemy &enemy)
 {
     if (enemy.health > 0)
     {
-        playerHealth -= enemy.power;
-        std::cout << enemy.name << " dealt " << enemy.power << " damage "
+        int damage = enemy.power - player.defense;
+        if (damage < 0)
+            damage = 0; // Ensure damage is not negative
+        playerHealth -= damage;
+        std::cout << enemy.name << " dealt " << damage << " damage "
                   << "(Player health: " << playerHealth << ")\n\n";
     }
 }
