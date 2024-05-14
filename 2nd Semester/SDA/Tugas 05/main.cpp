@@ -22,13 +22,26 @@ int getStudentId(const string &name)
 // 1. Menambahkan mahasiswa beserta teman-temannya
 void addStudent(const string &name, const vector<string> &friends)
 {
-    int idx = num_students;
-    student_names[idx] = name;
-    num_students++;
+    int idx = getStudentId(name);
+    if (idx == -1)
+    {
+        idx = num_students;
+        student_names[num_students++] = name;
+    }
+
+    // cout << "\nidx= " << idx << endl;
+    // cout << student_names[idx] << endl;
 
     for (const string &friend_name : friends)
     {
         int friend_idx = getStudentId(friend_name);
+        if (friend_idx == -1)
+        {
+            friend_idx = num_students;
+            student_names[num_students++] = friend_name;
+            // cout << student_names[friend_idx] << endl;
+        }
+        // cout << "friend_idx=" << friend_idx << endl;
         if (friend_idx != -1)
         {
             adj_matrix[idx][friend_idx] = true;
@@ -61,13 +74,22 @@ void removeStudent(const string &name)
             adj_matrix[idx][i] = false;
             adj_matrix[i][idx] = false;
         }
-        num_students--; // Hapus mahasiswa
 
-        // Isi slot kosong studentID saat ini
-        for (int i = idx; i < num_students; i++)
+        // Hapus mahasiswa
+        student_names[idx] = ""; // Kosongkan nama mahasiswa yang dihapus
+
+        // Geser indeks mahasiswa setelah idx ke kiri
+        for (int i = idx + 1; i < num_students; i++)
         {
-            student_names[i] = student_names[i + 1];
+            student_names[i - 1] = student_names[i];
+            for (int j = 0; j < num_students; j++)
+            {
+                adj_matrix[i - 1][j] = adj_matrix[i][j];
+                adj_matrix[j][i - 1] = adj_matrix[j][i];
+            }
         }
+
+        num_students--;
     }
 }
 
@@ -137,6 +159,17 @@ int main()
         cout << friend_name << " ";
     }
     cout << endl;
+
+    /* for (int i = 0; i < num_students; i++)
+    {
+        for (int j = 0; j < num_students; j++)
+        {
+            cout << i << " " << student_names[i] << "- " << j << " " << student_names[j] << " " << adj_matrix[i][j] << endl;
+        }
+        cout << endl;
+    } */
+    
+    // cout << "num_students= " << num_students;
 
     return 0;
 }
